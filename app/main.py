@@ -688,6 +688,9 @@ app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
 app.include_router(reports.router, tags=["reports"])
 app.include_router(screening.router, prefix="/api/screening", tags=["screening"])
+# 新增：自然语言筛选路由
+from app.routers import natural_language_screening as nl_screening_router
+app.include_router(nl_screening_router.router, prefix="/api/nl-screening", tags=["natural-language-screening"])
 app.include_router(queue.router, prefix="/api/queue", tags=["queue"])
 app.include_router(favorites.router, prefix="/api", tags=["favorites"])
 app.include_router(stocks_router.router, prefix="/api", tags=["stocks"])
