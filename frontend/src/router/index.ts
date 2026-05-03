@@ -88,6 +88,15 @@ const routes: RouteRecordRaw[] = [
           title: '股票筛选',
           requiresAuth: true
         }
+      },
+      {
+        path: 'nl',
+        name: 'NaturalLanguageScreening',
+        component: () => import('@/views/Screening/NaturalLanguage.vue'),
+        meta: {
+          title: '一句话选股',
+          requiresAuth: true
+        }
       }
     ]
   },

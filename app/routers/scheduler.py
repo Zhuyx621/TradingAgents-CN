@@ -71,10 +71,6 @@ async def update_job_metadata_route(
     Returns:
         操作结果
     """
-    # 检查管理员权限
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可以更新任务元数据")
-
     try:
         success = await service.update_job_metadata(
             job_id,
@@ -132,10 +128,6 @@ async def pause_job(
     Returns:
         操作结果
     """
-    # 检查管理员权限
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可以暂停任务")
-    
     try:
         success = await service.pause_job(job_id)
         if success:
@@ -163,10 +155,6 @@ async def resume_job(
     Returns:
         操作结果
     """
-    # 检查管理员权限
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可以恢复任务")
-    
     try:
         success = await service.resume_job(job_id)
         if success:
@@ -196,10 +184,6 @@ async def trigger_job(
     Returns:
         操作结果
     """
-    # 检查管理员权限
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可以手动触发任务")
-
     try:
         # 为特定任务传递 force 参数
         kwargs = {}

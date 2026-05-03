@@ -9,7 +9,8 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from tradingagents.llm_clients.factory import create_llm_client
-from tradingagents.default_config import DEFAULT_CONFIG
+from app.core.unified_config import unified_config
+from app.models.screening import ScreeningCondition
 
 logger = logging.getLogger(__name__)
 
@@ -76,25 +77,52 @@ class NaturalLanguageScreeningService:
         self._llm_client = None
     
     def _get_llm_client(self) -> Any:
-        """获取LLM客户端"""
         if self._llm_client is None:
-            provider = DEFAULT_CONFIG.get("llm_provider", "openai")
-            model = DEFAULT_CONFIG.get("quick_think_llm", "gpt-4o-mini")
-            base_url = DEFAULT_CONFIG.get("backend_url")
-            
+            model = unified_config.get_quick_analysis_model()
+            provider = self._resolve_provider(model)
+            base_url = self._resolve_base_url(model, provider)
+            api_key = self._resolve_api_key(model)
+
+            logger.info(f"🔧 使用系统LLM配置: provider={provider}, model={model}, base_url={base_url}")
+
             try:
-                self._llm_client = create_llm_client(provider, model, base_url)
+                self._llm_client = create_llm_client(provider, model, base_url, api_key=api_key)
                 logger.info(f"✅ 初始化LLM客户端成功: {provider}/{model}")
             except Exception as e:
-                logger.warning(f"⚠️ 使用默认LLM客户端失败，尝试使用deepseek: {e}")
-                try:
-                    self._llm_client = create_llm_client("deepseek", "deepseek-chat", "https://api.deepseek.com")
-                    logger.info("✅ 初始化DeepSeek客户端成功")
-                except Exception as e2:
-                    logger.error(f"❌ 初始化LLM客户端失败: {e2}")
-                    raise
-        
+                logger.error(f"❌ 初始化LLM客户端失败: {e}")
+                raise
+
         return self._llm_client
+
+    def _resolve_provider(self, model: str) -> str:
+        try:
+            from app.services.simple_analysis_service import get_provider_by_model_name_sync
+            return get_provider_by_model_name_sync(model)
+        except Exception:
+            pass
+
+        try:
+            from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
+            info = get_provider_and_url_by_model_sync(model)
+            return info.get("provider", "dashscope")
+        except Exception:
+            return "dashscope"
+
+    def _resolve_base_url(self, model: str, provider: str) -> Optional[str]:
+        try:
+            from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
+            info = get_provider_and_url_by_model_sync(model)
+            return info.get("backend_url")
+        except Exception:
+            return None
+
+    def _resolve_api_key(self, model: str) -> Optional[str]:
+        try:
+            from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
+            info = get_provider_and_url_by_model_sync(model)
+            return info.get("api_key")
+        except Exception:
+            return None
     
     def parse_natural_language(self, query: str) -> Dict[str, Any]:
         """
@@ -182,10 +210,18 @@ class NaturalLanguageScreeningService:
         # 2. 执行筛选
         from app.services.enhanced_screening_service import get_enhanced_screening_service
         screening_service = get_enhanced_screening_service()
-        
-        # 构建筛选请求
-        screening_result = await screening_service.screen(
-            conditions=conditions,
+
+        screening_conditions = [
+            ScreeningCondition(
+                field=c.get("field", ""),
+                operator=c.get("operator", "=="),
+                value=c.get("value")
+            )
+            for c in conditions
+        ]
+
+        screening_result = await screening_service.screen_stocks(
+            conditions=screening_conditions,
             order_by=order_by,
             limit=limit
         )
