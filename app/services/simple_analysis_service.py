@@ -1751,8 +1751,65 @@ class SimpleAnalysisService:
                 recommendation = f"请参考详细分析报告做出投资决策。"
                 logger.warning(f"⚠️ [RECOMMENDATION] 使用备用建议")
 
-            # 从决策中提取模型信息
-            model_info = decision.get('model_info', 'Unknown') if isinstance(decision, dict) else 'Unknown'
+            # 构建模型信息（使用实际分析时采用的模型）
+            provider_display = {
+                "dashscope": "阿里百炼（通义千问）",
+                "qwen": "阿里百炼（通义千问）",
+                "openai": "OpenAI",
+                "google": "Google Gemini",
+                "deepseek": "DeepSeek",
+                "qianfan": "百度千帆",
+                "zhipu": "智谱AI",
+                "glm": "智谱AI",
+                "openrouter": "OpenRouter",
+                "aihubmix": "AiHubMix",
+                "siliconflow": "SiliconFlow",
+                "anthropic": "Anthropic Claude",
+            }
+            quick_provider_display = provider_display.get(quick_provider, quick_provider)
+            deep_provider_display = provider_display.get(deep_provider, deep_provider)
+
+            depth_display_map = {1: "快速分析", 2: "基础分析", 3: "标准分析", 4: "深度分析", 5: "全面分析"}
+            if isinstance(research_depth, (int, float)):
+                depth_level = int(research_depth)
+                depth_display = depth_display_map.get(depth_level, f"{depth_level}级分析")
+            elif isinstance(research_depth, str) and research_depth.isdigit():
+                depth_level = int(research_depth)
+                depth_display = depth_display_map.get(depth_level, f"{depth_level}级分析")
+            else:
+                depth_level = 3
+                depth_display = str(research_depth)
+
+            model_info = {
+                "quick_model": quick_model,
+                "deep_model": deep_model,
+                "quick_provider": quick_provider,
+                "deep_provider": deep_provider,
+                "quick_provider_display": quick_provider_display,
+                "deep_provider_display": deep_provider_display,
+                "research_depth": depth_display,
+            }
+
+            if depth_level <= 2:
+                model_info_text = (
+                    f"📊 本次分析：{depth_display}\n"
+                    f"🔧 使用模型：{quick_model}（{quick_provider_display}）\n\n"
+                )
+            elif depth_level >= 4:
+                model_info_text = (
+                    f"📊 本次分析：{depth_display}\n"
+                    f"🔧 使用模型：{deep_model}（{deep_provider_display}）\n\n"
+                )
+            else:
+                if quick_provider == deep_provider:
+                    provider_line = f"均来自 {quick_provider_display}"
+                else:
+                    provider_line = f"快速任务来自 {quick_provider_display}，深度任务来自 {deep_provider_display}"
+                model_info_text = (
+                    f"📊 本次分析：{depth_display}\n"
+                    f"🔧 使用模型：快速任务 {quick_model} + 深度任务 {deep_model}（{provider_line}）\n\n"
+                )
+            summary = model_info_text + summary
 
             # 构建结果
             result = {

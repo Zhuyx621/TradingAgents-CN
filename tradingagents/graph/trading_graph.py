@@ -528,7 +528,19 @@ class TradingAgentsGraph:
             )
 
             logger.info(f"✅ [自定义厂家 {provider_name}] 已配置自定义端点并应用用户配置的模型参数")
-        
+
+        # 根据分析深度决定模型分配策略
+        research_depth = self.config.get("research_depth", "标准")
+        depth_level = self._normalize_depth(research_depth)
+        if depth_level <= 2:
+            self.deep_thinking_llm = self.quick_thinking_llm
+            logger.info(f"🎯 [模型策略] 基础分析（{research_depth}）：所有Agent统一使用快速模型")
+        elif depth_level >= 4:
+            self.quick_thinking_llm = self.deep_thinking_llm
+            logger.info(f"🎯 [模型策略] 深度分析（{research_depth}）：所有Agent统一使用深度模型")
+        else:
+            logger.info(f"🎯 [模型策略] 标准分析（{research_depth}）：分析师用快速模型，决策者用深度模型")
+
         self.toolkit = Toolkit(config=self.config)
 
         # Initialize memories (如果启用)
@@ -587,6 +599,17 @@ class TradingAgentsGraph:
 
         # Set up the graph
         self.graph = self.graph_setup.setup_graph(selected_analysts)
+
+    @staticmethod
+    def _normalize_depth(research_depth) -> int:
+        depth_map = {"快速": 1, "基础": 2, "标准": 3, "深度": 4, "全面": 5}
+        if isinstance(research_depth, (int, float)):
+            return int(research_depth)
+        if isinstance(research_depth, str):
+            if research_depth.isdigit():
+                return int(research_depth)
+            return depth_map.get(research_depth, 3)
+        return 3
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources.
